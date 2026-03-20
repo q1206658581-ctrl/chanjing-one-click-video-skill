@@ -6,7 +6,73 @@
 
 ---
 
-## 快速开始
+## 在 OpenClaw 中使用（推荐）
+
+这是最简单的使用方式——安装完成后，直接用自然语言告诉 AI 你要什么视频，它会自动跑完整个流程。
+
+### 第一步：安装 skill
+
+```bash
+openclaw skill install github:chandashi/chanjing-one-click-video
+```
+
+### 第二步：配置蝉镜凭证
+
+联系蝉镜获取 `app_id` 和 `secret_key`，写入凭证文件：
+
+```bash
+mkdir -p ~/.chanjing
+cat > ~/.chanjing/credentials.json <<EOF
+{
+  "app_id": "你的app_id",
+  "secret_key": "你的secret_key"
+}
+EOF
+```
+
+### 第三步：配置 chan-skills 路径
+
+该 skill 调用蝉镜 chan-skills 工具集来渲染视频，需要告诉 OpenClaw 它在哪里。
+
+在 OpenClaw workspace 的 `TOOLS.md` 中添加：
+
+```markdown
+## chanjing-one-click-video 环境配置
+
+运行此 skill 时，exec 命令需要以下环境变量：
+
+- `CHAN_SKILLS_DIR=/path/to/chan-skills`（chan-skills 仓库绝对路径）
+```
+
+> 如果你的 AI 平台本身没有内置大模型（即不是通过 OpenClaw 的模型配置来调用 LLM），还需要额外设置 `DEERAPI_API_KEY`。通常在 OpenClaw 中已有配置的模型提供商时不需要此步骤。
+
+### 第四步：直接对话触发
+
+安装后，在 OpenClaw 对话框里用自然语言说：
+
+```
+帮我做一个关于"为什么年轻人开始重视睡眠管理"的60秒抖音视频
+```
+
+```
+根据这个选题生成一个短视频：家装公司怎么用短视频获客，平台微信视频号
+```
+
+```
+帮我一键做成片，话题是呼吁减少使用一次性筷子，30秒
+```
+
+AI 会自动完成：规划 → 文案 → 分镜 → 渲染 → 输出视频文件路径。
+
+### 验证安装
+
+```bash
+python $(openclaw skill path chanjing-one-click-video)/scripts/check_deps.py
+```
+
+---
+
+## 快速开始（命令行直接运行）
 
 ### 1. 配置凭证
 
