@@ -96,12 +96,24 @@ def generate_storyboard(plan: VideoPlan, script: ScriptResult) -> StoryboardResu
     logger.debug("LLM storyboard raw output: %s", raw[:400])
     data = _extract_json(raw)
 
+    scene_scripts = [str(x).strip() for x in (script.scene_scripts or [])]
+
     scenes = []
     for s in data.get("scenes", []):
+        scene_id = int(s["scene_id"])
+        voiceover = s["voiceover"]
+        idx = scene_id - 1
+        if 0 <= idx < len(scene_scripts) and scene_scripts[idx]:
+            if str(voiceover).strip() != scene_scripts[idx]:
+                logger.warning(
+                    "Storyboard voiceover mismatch at scene %d, overriding with script.scene_scripts",
+                    scene_id,
+                )
+            voiceover = scene_scripts[idx]
         scenes.append(Scene(
-            scene_id=s["scene_id"],
+            scene_id=scene_id,
             duration_sec=s["duration_sec"],
-            voiceover=s["voiceover"],
+            voiceover=voiceover,
             subtitle=s["subtitle"],
             visual_prompt=s["visual_prompt"],
             use_avatar=s.get("use_avatar", plan.use_avatar),

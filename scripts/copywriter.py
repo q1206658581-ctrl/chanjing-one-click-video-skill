@@ -114,8 +114,23 @@ def generate_script(plan: VideoPlan) -> ScriptResult:
     scene_count = int(plan.scene_count or 5)
     scene_scripts = _extract_scene_scripts(data, scene_count)
     full_script = str(data.get("full_script", "") or "").strip()
+    hook = str(data.get("hook", "") or "").strip()
     if not full_script and any(scene_scripts):
         full_script = "\n".join([s for s in scene_scripts if s])
+
+    if hook and scene_scripts and full_script:
+        joined = "".join(scene_scripts)
+        if full_script.startswith(hook) and hook not in joined:
+            first = scene_scripts[0]
+            if len(scene_scripts) == 1:
+                scene_scripts[0] = f"{hook}{first}".strip()
+            else:
+                scene_scripts[0] = hook
+                if first:
+                    if scene_scripts[1]:
+                        scene_scripts[1] = f"{first}{scene_scripts[1]}".strip()
+                    else:
+                        scene_scripts[1] = first
 
     result = ScriptResult(
         title=data.get("title", ""),

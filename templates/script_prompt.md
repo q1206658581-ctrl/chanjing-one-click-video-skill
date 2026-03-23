@@ -23,6 +23,11 @@
 4. **层次感**：有起承转合，开头抛出问题，中间展开论据，结尾给出行动
 5. **结尾 CTA**：引导观众思考或行动，不要强行"点赞关注"
 6. **分镜文案拆分**：必须输出 {scene_count} 段分镜文案，每段对应一个分镜（与后续分镜一一对应），每段字数尽量接近目标范围，避免某段特别长或特别短
+7. **硬约束（必须严格满足，否则视为输出不合格）**：
+   - scene_scripts 必须是数组，且长度必须严格等于 {scene_count}（不能多、不能少）
+   - scene_scripts[0] 必须包含 hook 的原句，且优先让 scene_scripts[0] 与 hook 一致（不要把 hook 藏到 full_script 里）
+   - full_script 必须严格由 scene_scripts 按顺序拼接得到（推荐用换行连接），不得额外新增不属于 scene_scripts 的句子
+   - 每段分镜字数必须强相关于时长：每段字数尽量落在 {per_scene_chars_low}-{per_scene_chars_high} 字范围内，避免某段明显超出导致该分镜时长过长
 
 请输出如下 JSON 格式：
 
