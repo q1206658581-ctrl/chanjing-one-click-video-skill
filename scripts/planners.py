@@ -41,6 +41,10 @@ def generate_video_plan(request: VideoRequest) -> VideoPlan:
         raw = _stub_plan_response()
     else:
         template = _load_template("plan_prompt.md")
+
+        default_scene_count = int(os.environ.get("DEFAULT_SCENE_COUNT", "5"))
+        scene_count = request.scene_count if request.scene_count is not None else default_scene_count
+
         prompt = template.format(
             topic=request.topic,
             industry=request.industry or "通用",
@@ -48,12 +52,16 @@ def generate_video_plan(request: VideoRequest) -> VideoPlan:
             style=request.style,
             duration_sec=request.duration_sec,
             use_avatar=request.use_avatar,
+            scene_count=scene_count,
         )
         with timed("generate_video_plan (LLM)", logger):
             raw = _llm.chat(prompt, max_tokens=1024)
 
     logger.debug("LLM plan raw output: %s", raw[:500])
     enrichment = _extract_json(raw)
+
+    default_scene_count = int(os.environ.get("DEFAULT_SCENE_COUNT", "5"))
+    scene_count = request.scene_count if request.scene_count is not None else default_scene_count
 
     plan = VideoPlan(
         topic=request.topic,
@@ -64,7 +72,7 @@ def generate_video_plan(request: VideoRequest) -> VideoPlan:
         audience=enrichment.get("audience", ""),
         core_angle=enrichment.get("core_angle", ""),
         video_type=enrichment.get("video_type", "avatar_talking_head"),
-        scene_count=enrichment.get("scene_count", 5),
+        scene_count=scene_count,
         tone=enrichment.get("tone", ""),
         cta=enrichment.get("cta", ""),
         use_avatar=request.use_avatar,

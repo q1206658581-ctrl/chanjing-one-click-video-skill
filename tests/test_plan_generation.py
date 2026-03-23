@@ -47,6 +47,12 @@ class TestVideoPlanGeneration(unittest.TestCase):
         self.assertGreater(plan.scene_count, 0)
         self.assertLessEqual(plan.scene_count, 10)
 
+    def test_scene_count_override_is_respected(self):
+        req = self._make_request(duration_sec=60)
+        req.scene_count = 7
+        plan = generate_video_plan(req)
+        self.assertEqual(plan.scene_count, 7)
+
     def test_plan_has_all_required_fields(self):
         req = self._make_request()
         plan = generate_video_plan(req)

@@ -13,12 +13,16 @@
 **期望 CTA**：{cta}
 **分镜数量**：{scene_count} 段
 
+每段分镜目标时长：约 {per_scene_sec} 秒
+每段分镜目标字数范围：{per_scene_chars_low} - {per_scene_chars_high} 字
+
 文案创作要求：
 1. **开头 hook**（前 3-5 秒）：必须有强钩子，引发好奇或共鸣，不要以"大家好"开头
 2. **全文时长匹配**：按每秒约 3-4 个字估算，{duration_sec} 秒约 {duration_sec}×3.5 个字
 3. **语言风格**：口语化、自然，不要 AI 腔；避免"首先、其次、最后"的公文感
 4. **层次感**：有起承转合，开头抛出问题，中间展开论据，结尾给出行动
 5. **结尾 CTA**：引导观众思考或行动，不要强行"点赞关注"
+6. **分镜文案拆分**：必须输出 {scene_count} 段分镜文案，每段对应一个分镜（与后续分镜一一对应），每段字数尽量接近目标范围，避免某段特别长或特别短
 
 请输出如下 JSON 格式：
 
@@ -26,6 +30,12 @@
 {{
   "title": "视频标题（15字以内，适合短视频平台）",
   "hook": "开场白/钩子（独立完整的开场句，3-5秒）",
+  "scene_scripts": [
+    "第1段分镜口播文案（约 {per_scene_chars_low}-{per_scene_chars_high} 字）",
+    "第2段分镜口播文案（约 {per_scene_chars_low}-{per_scene_chars_high} 字）",
+    "...",
+    "第{scene_count}段分镜口播文案（约 {per_scene_chars_low}-{per_scene_chars_high} 字）"
+  ],
   "full_script": "完整口播文案（包含 hook 在内的全文）",
   "cta": "结尾行动号召（独立句子）"
 }}

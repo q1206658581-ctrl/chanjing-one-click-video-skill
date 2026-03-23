@@ -47,11 +47,21 @@ class TestScriptGeneration(unittest.TestCase):
         self.assertTrue(result.hook)
         self.assertTrue(result.full_script)
         self.assertTrue(result.cta)
+        self.assertIsInstance(result.scene_scripts, list)
+        self.assertEqual(len(result.scene_scripts), plan.scene_count)
+        self.assertTrue(all(isinstance(s, str) for s in result.scene_scripts))
 
     def test_full_script_not_empty(self):
         plan = _make_plan()
         result = generate_script(plan)
         self.assertGreater(len(result.full_script), 20)
+
+    def test_scene_scripts_not_empty(self):
+        plan = _make_plan()
+        result = generate_script(plan)
+        self.assertEqual(len(result.scene_scripts), plan.scene_count)
+        # At least one scene script should have content
+        self.assertTrue(any(s.strip() for s in result.scene_scripts))
 
     def test_to_dict_is_serialisable(self):
         import json

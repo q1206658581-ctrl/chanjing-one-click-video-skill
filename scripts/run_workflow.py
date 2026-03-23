@@ -41,7 +41,8 @@ def normalise_request(raw: dict) -> VideoRequest:
         "industry": "",
         "platform": os.environ.get("DEFAULT_PLATFORM", "douyin"),
         "style": os.environ.get("DEFAULT_STYLE", "观点型口播"),
-        "duration_sec": int(os.environ.get("DEFAULT_DURATION", "60")),
+        "duration_sec": int(os.environ.get("DEFAULT_DURATION", "25")),
+        "scene_count": int(os.environ.get("DEFAULT_SCENE_COUNT", "5")),
         "use_avatar": os.environ.get("DEFAULT_USE_AVATAR", "true").lower() == "true",
         "avatar_id": os.environ.get("CHANJING_AVATAR_ID", ""),
         "voice_id": os.environ.get("CHANJING_VOICE_ID", ""),
@@ -51,6 +52,7 @@ def normalise_request(raw: dict) -> VideoRequest:
     merged = {**defaults, **{k: v for k, v in raw.items() if v is not None}}
     # Coerce types
     merged["duration_sec"] = int(merged["duration_sec"])
+    merged["scene_count"] = int(merged["scene_count"]) if merged.get("scene_count") is not None else None
     merged["use_avatar"] = bool(merged["use_avatar"])
     return VideoRequest.from_dict(merged)
 
@@ -177,6 +179,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--platform", default="", help="Target platform: douyin / shipinhao / xiaohongshu")
     p.add_argument("--style", default="", help="Video style: 干货 / 观点 / 种草 / 口播")
     p.add_argument("--duration", type=int, default=0, help="Duration in seconds: 30 / 60 / 90")
+    p.add_argument("--scene-count", type=int, default=0, help="Storyboard scene count (分镜数量)")
     p.add_argument("--no-avatar", action="store_true", help="Disable digital avatar")
     p.add_argument("--output", help="Write result JSON to this file path")
     p.add_argument("--pretty", action="store_true", default=True, help="Pretty-print JSON output")
@@ -205,6 +208,8 @@ def main() -> None:
         raw_input["style"] = args.style
     if args.duration:
         raw_input["duration_sec"] = args.duration
+    if args.scene_count:
+        raw_input["scene_count"] = args.scene_count
     if args.no_avatar:
         raw_input["use_avatar"] = False
 

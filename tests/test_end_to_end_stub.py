@@ -21,14 +21,16 @@ class TestInputNormalisation(unittest.TestCase):
     def test_defaults_applied_when_fields_missing(self):
         req = normalise_request({"topic": "AI agent 入门"})
         self.assertEqual(req.platform, "douyin")
-        self.assertEqual(req.duration_sec, 60)
+        self.assertEqual(req.duration_sec, 25)
+        self.assertEqual(req.scene_count, 5)
         self.assertTrue(req.use_avatar)
         self.assertTrue(req.subtitle_required)
 
     def test_explicit_values_override_defaults(self):
-        req = normalise_request({"topic": "test", "platform": "shipinhao", "duration_sec": 30})
+        req = normalise_request({"topic": "test", "platform": "shipinhao", "duration_sec": 30, "scene_count": 7})
         self.assertEqual(req.platform, "shipinhao")
         self.assertEqual(req.duration_sec, 30)
+        self.assertEqual(req.scene_count, 7)
 
     def test_duration_coerced_to_int(self):
         req = normalise_request({"topic": "test", "duration_sec": "90"})

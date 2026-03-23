@@ -8,6 +8,7 @@
 **视频风格**：{style}
 **视频时长**：{duration_sec} 秒
 **是否使用数字人口播**：{use_avatar}
+**分镜数量**：{scene_count} 段
 
 请输出一个 JSON 对象，包含以下字段：
 
@@ -16,7 +17,7 @@
   "audience": "目标受众描述（2-4个词）",
   "core_angle": "核心观点/切入角度（1-2句话）",
   "video_type": "avatar_talking_head",
-  "scene_count": 5,
+  "scene_count": {scene_count},
   "tone": "视频语气风格描述",
   "cta": "结尾行动号召语（1句话）"
 }}
@@ -25,7 +26,7 @@
 要求：
 1. audience 要精准，例如"中小企业老板、管理者"而非"所有人"
 2. core_angle 是这个视频最核心的观点或价值主张，而非对选题的复述
-3. scene_count 根据时长合理分配：30秒=3-4段，60秒=4-6段，90秒=6-8段
+3. scene_count 必须等于 {scene_count}
 4. tone 要自然、具体，如"清晰直接，像创始人随口分享"而非"专业"
 5. cta 要有行动引导，让观众有所思考或行动
 6. 只输出 JSON，不要其他解释文字

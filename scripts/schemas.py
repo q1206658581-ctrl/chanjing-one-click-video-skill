@@ -21,6 +21,7 @@ class VideoRequest:
     platform: str = "douyin"           # douyin / shipinhao / xiaohongshu
     style: str = "观点型口播"            # 干货 / 观点 / 种草 / 口播
     duration_sec: int = 60             # 30 / 60 / 90
+    scene_count: Optional[int] = None  # optional override; if None, planner decides / uses default
     use_avatar: bool = True
     avatar_id: str = ""                # empty = use platform default
     voice_id: str = ""                 # empty = use platform default
@@ -80,6 +81,7 @@ class ScriptResult:
     hook: str
     full_script: str
     cta: str
+    scene_scripts: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
