@@ -63,6 +63,42 @@ def _probe_video_encoder() -> tuple[str, list[str]]:
       4. h264_amf          — AMD GPU
       5. libx264           — CPU 软件编码（兜底）
     """
+    forced = os.environ.get("CHANJING_VIDEO_CODEC", "").strip()
+    if forced:
+        forced = forced.lower()
+        if forced == "libx264":
+            logger.info("视频编码器: libx264（强制）")
+            return "libx264", ["-preset", "fast", "-crf", "23"]
+
+        forced_candidates = {
+            "h264_videotoolbox": ["-q:v", "65"],
+            "h264_nvenc": ["-preset", "p4", "-cq", "23"],
+            "h264_qsv": ["-preset", "medium"],
+            "h264_amf": ["-quality", "balanced"],
+        }
+        quality_args = forced_candidates.get(forced)
+        if quality_args is not None:
+            test_input = ["-f", "lavfi", "-i", "color=c=black:s=128x128:d=0.1:r=30"]
+            try:
+                r = subprocess.run(
+                    [
+                        "ffmpeg", "-hide_banner", "-loglevel", "error",
+                        *test_input,
+                        "-c:v", forced, *quality_args,
+                        "-f", "null", "-",
+                    ],
+                    capture_output=True,
+                    timeout=10,
+                )
+                if r.returncode == 0:
+                    logger.info("视频编码器: %s（强制）", forced)
+                    return forced, quality_args
+                logger.warning("强制视频编码器不可用: %s，继续自动探测", forced)
+            except Exception:
+                logger.warning("强制视频编码器探测异常: %s，继续自动探测", forced)
+        else:
+            logger.warning("未知 CHANJING_VIDEO_CODEC=%r，继续自动探测", forced)
+
     candidates = [
         ("h264_videotoolbox", ["-q:v", "65"]),
         ("h264_nvenc",        ["-preset", "p4", "-cq", "23"]),
@@ -211,21 +247,42 @@ def _composite_video_audio(video: str | Path, audio: str | Path) -> Path:
     out.close()
     is_remote = str(video).startswith("http")
     ctx = _cdn_semaphore if is_remote else _noop_ctx()
-    with ctx:
-        _ffmpeg(
-            "-stream_loop", "-1", "-i", str(video),
-            "-i", str(audio),
-            "-map", "0:v", "-map", "1:a",
-            "-vf", (
-                f"scale={OUTPUT_W}:{OUTPUT_H}:force_original_aspect_ratio=decrease,"
-                f"pad={OUTPUT_W}:{OUTPUT_H}:(ow-iw)/2:(oh-ih)/2:color=black"
-            ),
-            "-c:v", _VIDEO_CODEC, *_VIDEO_QUALITY_ARGS,
-            "-c:a", "aac", "-ar", "44100", "-ac", "2",
-            "-shortest",
-            out.name,
-            label="composite",
-        )
+
+    downloaded_video: Path | None = None
+    try:
+        with ctx:
+            video_input = str(video)
+            if is_remote:
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+                tmp.close()
+                _ffmpeg(
+                    "-i", video_input,
+                    "-map", "0:v:0",
+                    "-c:v", "copy",
+                    "-an",
+                    tmp.name,
+                    label="download ai video",
+                )
+                downloaded_video = Path(tmp.name)
+                video_input = tmp.name
+
+            _ffmpeg(
+                "-stream_loop", "-1", "-i", video_input,
+                "-i", str(audio),
+                "-map", "0:v:0", "-map", "1:a:0",
+                "-vf", (
+                    f"scale={OUTPUT_W}:{OUTPUT_H}:force_original_aspect_ratio=decrease,"
+                    f"pad={OUTPUT_W}:{OUTPUT_H}:(ow-iw)/2:(oh-ih)/2:color=black"
+                ),
+                "-c:v", _VIDEO_CODEC, *_VIDEO_QUALITY_ARGS,
+                "-c:a", "aac", "-ar", "44100", "-ac", "2",
+                "-shortest",
+                out.name,
+                label="composite",
+            )
+    finally:
+        if downloaded_video:
+            downloaded_video.unlink(missing_ok=True)
     return Path(out.name)
 
 
@@ -245,15 +302,30 @@ def _concat_clips(clips: list[Path]) -> Path:
     filter_str = "".join(f"[{i}:v][{i}:a]" for i in range(n))
     filter_str += f"concat=n={n}:v=1:a=1[v][a]"
 
-    _ffmpeg(
-        *inputs,
-        "-filter_complex", filter_str,
-        "-map", "[v]", "-map", "[a]",
-        "-c:v", _VIDEO_CODEC, *_VIDEO_QUALITY_ARGS,
-        "-c:a", "aac",
-        out.name,
-        label="concat",
-    )
+    try:
+        _ffmpeg(
+            *inputs,
+            "-filter_complex", filter_str,
+            "-map", "[v]", "-map", "[a]",
+            "-c:v", _VIDEO_CODEC, *_VIDEO_QUALITY_ARGS,
+            "-c:a", "aac",
+            out.name,
+            label="concat",
+        )
+    except RuntimeError as exc:
+        if _VIDEO_CODEC != "libx264":
+            logger.warning("ffmpeg concat 使用 %s 失败，重试 libx264: %s", _VIDEO_CODEC, exc)
+            _ffmpeg(
+                *inputs,
+                "-filter_complex", filter_str,
+                "-map", "[v]", "-map", "[a]",
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-c:a", "aac",
+                out.name,
+                label="concat(libx264)",
+            )
+        else:
+            raise
     return Path(out.name)
 
 
@@ -345,7 +417,7 @@ def _generate_full_tts(full_script: str, audio_man_id: str) -> Path:
             out.name,
             label="download full tts",
         )
-    logger.info("[TTS] 完整音频已下载: %s (url=%s)", out.name, audio_url[:60])
+    logger.info("[TTS] 完整音频已下载: %s (url=%s)", out.name, audio_url)
     return Path(out.name)
 
 
@@ -449,7 +521,7 @@ def _render_dh_scene(person_id: str, figure_type: str, audio_man_id: str,
         ["--id", video_id],
         label=f"poll_task scene{scene.scene_id}",
     )
-    logger.info("  [DH] Scene %d URL 就绪: %s", scene.scene_id, video_url[:60])
+    logger.info("  [DH] Scene %d URL 就绪: %s", scene.scene_id, video_url)
     return _normalize(video_url)
 
 
@@ -484,7 +556,7 @@ def _render_ai_scene(scene: Scene, wav_path: Path) -> Path:
         ["--unique-id", ai_unique_id],
         label=f"ai-creation poll scene{scene.scene_id}",
     )
-    logger.info("  [AI] Scene %d 视频就绪: %s", scene.scene_id, ai_video_url[:60])
+    logger.info("  [AI] Scene %d 视频就绪: %s", scene.scene_id, ai_video_url)
 
     # ffmpeg composite：AI 视频（CDN URL）+ 本地 WAV（无需 CDN 信号量处理音频）
     return _composite_video_audio(ai_video_url, wav_path)
